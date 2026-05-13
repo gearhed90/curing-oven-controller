@@ -1,8 +1,9 @@
-// ==================== PET-CF Annealing Oven Controller - Final app.js ====================
+// ==================== PET-CF Annealing Oven Controller - Reliable app.js ====================
 let isConnected = false;
 let currentTemp = 28.0;
 let currentMode = "IDLE";
 let tempInterval = null;
+let bleDevice = null;
 let bleServer = null;
 const logEl = document.getElementById('log');
 
@@ -24,7 +25,7 @@ function startSimulation() {
     }, 1100);
 }
 
-// ==================== CONNECT ====================
+// ==================== CONNECT (Simplified & Reliable) ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
@@ -32,24 +33,20 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     log("🔍 Scanning for PET-CF-Oven...");
 
     try {
-        const device = await navigator.bluetooth.requestDevice({
+        bleDevice = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
-        log(`Device found: ${device.name}`);
-        bleServer = await device.gatt.connect();
-        log("GATT connected");
+        log(`Device found: ${bleDevice.name}`);
+        bleServer = await bleDevice.gatt.connect();
+        log("GATT connected - connection successful");
 
-        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-        log("Service discovered");
-
-        // Success!
         isConnected = true;
-        statusEl.textContent = `Connected to ${device.name}`;
+        statusEl.textContent = `Connected to ${bleDevice.name}`;
         statusEl.classList.add('connected');
         startSimulation();
-        log("✅ Connection successful");
+        log("✅ Connected (ready to send commands)");
 
     } catch (error) {
         console.error(error);
@@ -64,6 +61,7 @@ async function sendCommand(cmdObj) {
         log("❌ Not connected");
         return;
     }
+
     try {
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const cmdChar = await service.getCharacteristic("c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f");
