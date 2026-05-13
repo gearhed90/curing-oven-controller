@@ -1,10 +1,10 @@
-// ==================== PET-CF Annealing Oven Controller - app.js ====================
+// ==================== PET-CF Annealing Oven Controller - Complete app.js ====================
 let isConnected = false;
 let currentTemp = 28.0;
 let currentMode = "IDLE";
 let tempInterval = null;
-let device = null;           // Global device reference
-let server = null;           // Global server reference
+let bleDevice = null;
+let bleServer = null;
 const logEl = document.getElementById('log');
 
 function log(msg, type = 'info') {
@@ -25,7 +25,7 @@ function startSimulation() {
     }, 1100);
 }
 
-// ==================== RELIABLE BLE CONNECT ====================
+// ==================== CONNECT ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
@@ -33,24 +33,24 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     log("🔍 Scanning for PET-CF-Oven...");
 
     try {
-        device = await navigator.bluetooth.requestDevice({
+        bleDevice = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
-        log(`Device found: ${device.name}`);
-        server = await device.gatt.connect();
+        log(`Device found: ${bleDevice.name}`);
+        bleServer = await bleDevice.gatt.connect();
         log("GATT connected");
 
-        const service = await server.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         log("Service discovered");
 
         const confirmChar = await service.getCharacteristic("beb5483e-36e1-4688-b7f5-ea07361b26a8");
         await confirmChar.readValue();
-        log("✅ Connection confirmed via characteristic");
+        log("✅ Connection confirmed");
 
         isConnected = true;
-        statusEl.textContent = `Connected to ${device.name}`;
+        statusEl.textContent = `Connected to ${bleDevice.name}`;
         statusEl.classList.add('connected');
         startSimulation();
 
@@ -61,37 +61,36 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     }
 });
 
-// ==================== SEND COMMANDS ====================
+// ==================== SEND COMMAND ====================
 async function sendCommand(cmdObj) {
-    if (!isConnected || !server) {
-        log("❌ Not connected");
+    if (!isConnected || !bleServer) {
+        log("❌ Not connected - please connect first");
         return;
     }
 
     try {
-        const service = await server.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const cmdChar = await service.getCharacteristic("c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f");
 
         const jsonString = JSON.stringify(cmdObj);
         const encoder = new TextEncoder();
         await cmdChar.writeValue(encoder.encode(jsonString));
 
-        log(`📤 Sent: ${jsonString}`);
+        log(`📤 Command sent: ${jsonString}`);
     } catch (error) {
         console.error(error);
         log(`❌ Command failed: ${error.message}`);
     }
 }
 
-// Full Power Test
+// Button handlers
 document.getElementById('full-power-btn').addEventListener('click', () => {
-    log("🔥 Full Power Test Activated");
+    log("🔥 Full Power Test button pressed");
     sendCommand({ cmd: "fullpower" });
 });
 
-// Emergency Stop
 document.getElementById('emergency-stop').addEventListener('click', () => {
-    log("⛔ EMERGENCY STOP");
+    log("⛔ Emergency Stop button pressed");
     sendCommand({ cmd: "emergency" });
 });
 
