@@ -1,26 +1,15 @@
-// ==================== PET-CF Annealing Oven Controller - Complete app.js ====================
+// ==================== PET-CF Annealing Oven Controller - Final Version ====================
 let isConnected = false;
-let currentTemp = 28.0;
-let currentMode = "IDLE";
-let tempInterval = null;
 let bleServer = null;
-let tempChar = null;
 const logEl = document.getElementById('log');
 
-function log(msg, type = 'info') {
+function log(msg) {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     logEl.textContent += `[${time}] ${msg}\n`;
     logEl.scrollTop = logEl.scrollHeight;
 }
 
-function startSimulation() {
-    if (tempInterval) clearInterval(tempInterval);
-    tempInterval = setInterval(() => {
-        document.getElementById('current-temp').textContent = currentTemp.toFixed(1);
-    }, 500);
-}
-
-// ==================== CONNECT + NOTIFICATIONS ====================
+// ==================== CONNECT ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
@@ -32,37 +21,55 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
-
         log(`Device found: ${device.name}`);
+
         bleServer = await device.gatt.connect();
         log("GATT connected");
 
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         log("Service discovered");
 
-        // Temperature notification characteristic
-        tempChar = await service.getCharacteristic("a3c1e8f2-5b2a-4c8e-9f1d-2e3b4c5d6e7f");
+        // Temperature notifications
+        const tempChar = await service.getCharacteristic("a3c1e8f2-5b2a-4c8e-9f1d-2e3b4c5d6e7f");
         await tempChar.startNotifications();
         tempChar.addEventListener('characteristicvaluechanged', (event) => {
             const value = new TextDecoder().decode(event.target.value);
-            currentTemp = parseFloat(value);
-            document.getElementById('current-temp').textContent = currentTemp.toFixed(1);
-            log(`🌡️ Temperature updated: ${currentTemp}°C`);
+            document.getElementById('current-temp').textContent = parseFloat(value).toFixed(1);
         });
-        log("Temperature notifications started");
 
         isConnected = true;
         statusEl.textContent = `Connected to ${device.name}`;
         statusEl.classList.add('connected');
-        startSimulation();
-        log("✅ Fully connected - receiving live updates");
+        log("✅ Connected with live status");
 
     } catch (error) {
-        console.error(error);
         statusEl.textContent = "Connection failed";
         log(`❌ Error: ${error.message || error}`);
     }
 });
+
+// ==================== READ STATUS (Mode + Heater + Fan) ====================
+async function readStatus() {
+    if (!bleServer) return;
+    try {
+        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        const statusChar = await service.getCharacteristic("d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90");
+        const value = await statusChar.readValue();
+        const status = new TextDecoder().decode(value);   // Format: MODE|HEATER|FAN
+
+        const parts = status.split("|");
+        if (parts.length >= 3) {
+            // Update visible indicators
+            document.getElementById('current-mode').textContent = parts[0];
+            document.getElementById('heater-status').textContent = `Heater: ${parts[1]}`;
+            document.getElementById('fan-status').textContent = `Fan: ${parts[2]}`;
+
+            log(`Status updated → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
+        }
+    } catch (error) {
+        log(`Status read error: ${error.message || error}`);
+    }
+}
 
 // ==================== SEND COMMANDS ====================
 async function sendCommand(cmdObj) {
@@ -78,19 +85,21 @@ async function sendCommand(cmdObj) {
         const encoder = new TextEncoder();
         await cmdChar.writeValue(encoder.encode(jsonString));
         log(`📤 Sent: ${jsonString}`);
+
+        // Read and display updated status
+        setTimeout(readStatus, 400);
+
     } catch (error) {
         log(`❌ Command failed: ${error.message || error}`);
     }
 }
 
 document.getElementById('full-power-btn').addEventListener('click', () => {
-    log("🔥 Full Power Test button pressed");
     sendCommand({ cmd: "fullpower" });
 });
 
 document.getElementById('emergency-stop').addEventListener('click', () => {
-    log("⛔ Emergency Stop button pressed");
     sendCommand({ cmd: "emergency" });
 });
 
-log("🚀 PET-CF Oven Controller ready. Connect to begin testing.");
+log("🚀 PET-CF Oven Controller ready.");
