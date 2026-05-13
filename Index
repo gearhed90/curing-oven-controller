@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PET-CF Annealing Oven Controller</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <meta name="theme-color" content="#1e2937">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PET-CF Annealing Oven</h1>
+            <div id="connection-status" class="status idle">Disconnected</div>
+        </header>
+
+        <!-- Live Temperature -->
+        <section class="temp-section">
+            <div class="temp-label">Current Temperature</div>
+            <div class="temp-display">
+                <span id="current-temp">28.0</span>
+                <span class="temp-unit">°C</span>
+            </div>
+            <div class="status-bar">
+                <span id="current-mode">IDLE</span>
+            </div>
+        </section>
+
+        <!-- Controls -->
+        <section class="controls">
+            <button id="connect-btn" class="btn primary">🔗 Connect to Oven (BLE)</button>
+            <button id="full-power-btn" class="btn warning">🔥 Full Power Test</button>
+            <button id="emergency-stop" class="btn danger">⛔ EMERGENCY STOP</button>
+        </section>
+
+        <!-- Annealing Program -->
+        <section class="program-section">
+            <h2>Annealing Program</h2>
+            <div class="form-grid">
+                <label>Target Temp (°C)</label>
+                <input type="number" id="target-temp" value="95" min="50" max="250">
+
+                <label>Ramp Rate (°C/min)</label>
+                <input type="number" id="ramp-rate" value="5" min="1" max="20">
+
+                <label>Hold Time (min)</label>
+                <input type="number" id="hold-time" value="30" min="1" max="240">
+
+                <label>Cool-down Rate (°C/min)</label>
+                <input type="number" id="cool-rate" value="3" min="1" max="20">
+            </div>
+            <button id="start-program" class="btn success">▶ Start Annealing Cycle</button>
+        </section>
+
+        <!-- Manual Control -->
+        <section class="manual-section">
+            <h2>Manual Control</h2>
+            <button id="manual-heat" class="btn">🔥 Start Heating</button>
+            <button id="manual-stop" class="btn">⏹ Stop Heating</button>
+        </section>
+
+        <!-- Log -->
+        <section class="log-section">
+            <h2>Log</h2>
+            <div id="log" class="log"></div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
