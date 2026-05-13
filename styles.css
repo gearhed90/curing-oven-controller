@@ -43,14 +43,19 @@ h2 { margin-bottom: 16px; color: #94a3b8; }
     border: none;
     border-radius: 12px;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;           /* Bolder text */
     cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);   /* Slight shadow for extra readability */
 }
 
-.primary { background: #3b82f6; }
-.success { background: #22c55e; }
-.warning { background: #eab308; color: black; }
-.danger { background: #ef4444; }
+.primary { 
+    background: #3b82f6; 
+    color: #ffffff !important;   /* Bright white text */
+}
+
+.success { background: #22c55e; color: #ffffff !important; }
+.warning { background: #eab308; color: #1e2937 !important; }
+.danger  { background: #ef4444; color: #ffffff !important; }
 
 .log-section {
     background: #1e2937;
