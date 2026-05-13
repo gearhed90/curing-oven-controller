@@ -1,4 +1,4 @@
-// ==================== PET-CF Annealing Oven Controller - Final Version ====================
+// ==================== PET-CF Annealing Oven Controller - Debug Version ====================
 let isConnected = false;
 let bleServer = null;
 const logEl = document.getElementById('log');
@@ -40,34 +40,43 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         isConnected = true;
         statusEl.textContent = `Connected to ${device.name}`;
         statusEl.classList.add('connected');
-        log("✅ Connected with live status");
+        log("✅ Connected");
+
+        // Read initial status after connecting
+        setTimeout(readStatus, 800);
 
     } catch (error) {
         statusEl.textContent = "Connection failed";
-        log(`❌ Error: ${error.message || error}`);
+        log(`❌ Connection error: ${error.message || error}`);
     }
 });
 
-// ==================== READ STATUS (Mode + Heater + Fan) ====================
+// ==================== READ STATUS (with better error logging) ====================
 async function readStatus() {
-    if (!bleServer) return;
+    if (!bleServer) {
+        log("readStatus: Not connected");
+        return;
+    }
     try {
+        log("Reading status characteristic...");
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const statusChar = await service.getCharacteristic("d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90");
         const value = await statusChar.readValue();
-        const status = new TextDecoder().decode(value);   // Format: MODE|HEATER|FAN
+        const status = new TextDecoder().decode(value);
+
+        log(`Raw status received: ${status}`);
 
         const parts = status.split("|");
         if (parts.length >= 3) {
-            // Update visible indicators
             document.getElementById('current-mode').textContent = parts[0];
             document.getElementById('heater-status').textContent = `Heater: ${parts[1]}`;
             document.getElementById('fan-status').textContent = `Fan: ${parts[2]}`;
-
-            log(`Status updated → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
+            log(`✅ Status updated → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
+        } else {
+            log(`Status format unexpected: ${status}`);
         }
     } catch (error) {
-        log(`Status read error: ${error.message || error}`);
+        log(`❌ Status read FAILED: ${error.message || error}`);
     }
 }
 
@@ -86,8 +95,8 @@ async function sendCommand(cmdObj) {
         await cmdChar.writeValue(encoder.encode(jsonString));
         log(`📤 Sent: ${jsonString}`);
 
-        // Read and display updated status
-        setTimeout(readStatus, 400);
+        // Read updated status
+        setTimeout(readStatus, 500);
 
     } catch (error) {
         log(`❌ Command failed: ${error.message || error}`);
