@@ -23,37 +23,46 @@ function startSimulation() {
     }, 1100);
 }
 
-// ==================== REAL BLE CONNECT (Improved for Bluefy) ====================
+// ==================== RELIABLE BLE CONNECT (Bluefy + nRF) ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
-    statusEl.textContent = "Opening device picker...";
+    const logEl = document.getElementById('log'); // assume you have a log element
+
+    statusEl.textContent = "Connecting...";
     statusEl.classList.remove('connected');
-    log("🔍 Opening Bluefy device picker...", "info");
+    log("🔍 Scanning for PET-CF-Oven...");
 
     try {
         const device = await navigator.bluetooth.requestDevice({
-            // acceptAllDevices: true,           // Uncomment this line if the filtered version still fails
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
-        log(`✅ Device selected: ${device.name || 'Unknown'}`, "success");
-        statusEl.textContent = `Connected to ${device.name || 'Device'}`;
-        statusEl.classList.add('connected');
+        log(`Device found: ${device.name}`);
 
+        const server = await device.gatt.connect();
+        log("GATT connected");
+
+        const service = await server.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        log("Service discovered");
+
+        // Read the confirmation characteristic (add this characteristic on ESP32 side if desired)
+        const char = await service.getCharacteristic("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+        const value = await char.readValue();
+        log("Characteristic read successful");
+
+        // Success!
         isConnected = true;
+        statusEl.textContent = `Connected to ${device.name}`;
+        statusEl.classList.add('connected');
+        log("✅ Bluefy connection confirmed");
+
         startSimulation();
 
     } catch (error) {
-        console.error("BLE Error:", error);
-        log(`❌ Connection failed: ${error.message}`, "danger");
-        statusEl.textContent = "Failed — Check Bluefy logs";
-        
-        if (error.name === "NotFoundError") {
-            log("   No matching device found. Try power-cycling ESP32.", "warning");
-        } else if (error.name === "NotAllowedError") {
-            log("   Permission denied or picker cancelled.", "info");
-        }
+        console.error(error);
+        statusEl.textContent = "Connection failed";
+        log(`❌ Error: ${error.message}`);
     }
 });
 
