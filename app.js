@@ -1,8 +1,10 @@
-// PET-CF Annealing Oven Controller - app.js
+// ==================== PET-CF Annealing Oven Controller - app.js ====================
 let isConnected = false;
 let currentTemp = 28.0;
 let currentMode = "IDLE";
 let tempInterval = null;
+let device = null;           // Global device reference
+let server = null;           // Global server reference
 const logEl = document.getElementById('log');
 
 function log(msg, type = 'info') {
@@ -23,40 +25,33 @@ function startSimulation() {
     }, 1100);
 }
 
-// ==================== RELIABLE BLE CONNECT (Bluefy + nRF) ====================
+// ==================== RELIABLE BLE CONNECT ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
-    const logEl = document.getElementById('log'); // assume you have a log element
-
     statusEl.textContent = "Connecting...";
     statusEl.classList.remove('connected');
     log("🔍 Scanning for PET-CF-Oven...");
 
     try {
-        const device = await navigator.bluetooth.requestDevice({
+        device = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
         log(`Device found: ${device.name}`);
-
-        const server = await device.gatt.connect();
+        server = await device.gatt.connect();
         log("GATT connected");
 
         const service = await server.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         log("Service discovered");
 
-        // Read the confirmation characteristic (add this characteristic on ESP32 side if desired)
-        const char = await service.getCharacteristic("beb5483e-36e1-4688-b7f5-ea07361b26a8");
-        const value = await char.readValue();
-        log("Characteristic read successful");
+        const confirmChar = await service.getCharacteristic("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+        await confirmChar.readValue();
+        log("✅ Connection confirmed via characteristic");
 
-        // Success!
         isConnected = true;
         statusEl.textContent = `Connected to ${device.name}`;
         statusEl.classList.add('connected');
-        log("✅ Bluefy connection confirmed");
-
         startSimulation();
 
     } catch (error) {
@@ -66,32 +61,15 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     }
 });
 
-// Full Power Test
-document.getElementById('full-power-btn').addEventListener('click', () => {
-    if (!isConnected) return log("❌ Connect to oven first", "warning");
-    log("🔥 Full Power Test Activated (100% Heat + Fan)", "warning");
-    currentMode = "FULL POWER";
-    document.getElementById('current-mode').textContent = "FULL POWER";
-});
-
-// Emergency Stop
-document.getElementById('emergency-stop').addEventListener('click', () => {
-    currentMode = "IDLE";
-    document.getElementById('current-mode').textContent = "IDLE";
-    log("⛔ EMERGENCY STOP — All systems off", "danger");
-});
-
-log("🚀 PET-CF Oven Controller ready. Tap Connect to begin testing.");
-
-// ==================== SEND COMMANDS TO ESP32 ====================
+// ==================== SEND COMMANDS ====================
 async function sendCommand(cmdObj) {
-    if (!isConnected) {
+    if (!isConnected || !server) {
         log("❌ Not connected");
         return;
     }
 
     try {
-        const service = await device.gatt.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        const service = await server.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const cmdChar = await service.getCharacteristic("c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f");
 
         const jsonString = JSON.stringify(cmdObj);
@@ -105,23 +83,16 @@ async function sendCommand(cmdObj) {
     }
 }
 
-// Full Power Test button
+// Full Power Test
 document.getElementById('full-power-btn').addEventListener('click', () => {
+    log("🔥 Full Power Test Activated");
     sendCommand({ cmd: "fullpower" });
 });
 
-// Emergency Stop button
+// Emergency Stop
 document.getElementById('emergency-stop').addEventListener('click', () => {
+    log("⛔ EMERGENCY STOP");
     sendCommand({ cmd: "emergency" });
 });
 
-// Example: Start Annealing Program (you can expand this later)
-function startAnnealingProgram(targetTemp, rampRate, holdTime, coolRate) {
-    sendCommand({
-        cmd: "start",
-        target: targetTemp,
-        ramp: rampRate,
-        hold: holdTime,
-        cool: coolRate
-    });
-}
+log("🚀 PET-CF Oven Controller ready. Connect to begin testing.");
