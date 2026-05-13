@@ -82,3 +82,46 @@ document.getElementById('emergency-stop').addEventListener('click', () => {
 });
 
 log("🚀 PET-CF Oven Controller ready. Tap Connect to begin testing.");
+
+// ==================== SEND COMMANDS TO ESP32 ====================
+async function sendCommand(cmdObj) {
+    if (!isConnected) {
+        log("❌ Not connected");
+        return;
+    }
+
+    try {
+        const service = await device.gatt.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        const cmdChar = await service.getCharacteristic("c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f");
+
+        const jsonString = JSON.stringify(cmdObj);
+        const encoder = new TextEncoder();
+        await cmdChar.writeValue(encoder.encode(jsonString));
+
+        log(`📤 Sent: ${jsonString}`);
+    } catch (error) {
+        console.error(error);
+        log(`❌ Command failed: ${error.message}`);
+    }
+}
+
+// Full Power Test button
+document.getElementById('full-power-btn').addEventListener('click', () => {
+    sendCommand({ cmd: "fullpower" });
+});
+
+// Emergency Stop button
+document.getElementById('emergency-stop').addEventListener('click', () => {
+    sendCommand({ cmd: "emergency" });
+});
+
+// Example: Start Annealing Program (you can expand this later)
+function startAnnealingProgram(targetTemp, rampRate, holdTime, coolRate) {
+    sendCommand({
+        cmd: "start",
+        target: targetTemp,
+        ramp: rampRate,
+        hold: holdTime,
+        cool: coolRate
+    });
+}
