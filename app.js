@@ -1,10 +1,10 @@
-// ==================== PET-CF Annealing Oven Controller - Reliable app.js ====================
+// ==================== PET-CF Annealing Oven Controller - Complete app.js ====================
 let isConnected = false;
 let currentTemp = 28.0;
 let currentMode = "IDLE";
 let tempInterval = null;
-let bleDevice = null;
 let bleServer = null;
+let tempChar = null;
 const logEl = document.getElementById('log');
 
 function log(msg, type = 'info') {
@@ -16,16 +16,11 @@ function log(msg, type = 'info') {
 function startSimulation() {
     if (tempInterval) clearInterval(tempInterval);
     tempInterval = setInterval(() => {
-        if (currentMode === "RAMPING") currentTemp += 1.8;
-        else if (currentMode === "HOLDING") currentTemp += (Math.random() * 0.6 - 0.3);
-        else if (currentMode === "COOLING") currentTemp -= 1.5;
-        if (currentTemp < 25) currentTemp = 25;
-        if (currentTemp > 250) currentTemp = 250;
         document.getElementById('current-temp').textContent = currentTemp.toFixed(1);
-    }, 1100);
+    }, 500);
 }
 
-// ==================== CONNECT (Simplified & Reliable) ====================
+// ==================== CONNECT + NOTIFICATIONS ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
@@ -33,20 +28,34 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     log("🔍 Scanning for PET-CF-Oven...");
 
     try {
-        bleDevice = await navigator.bluetooth.requestDevice({
+        const device = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
-        log(`Device found: ${bleDevice.name}`);
-        bleServer = await bleDevice.gatt.connect();
-        log("GATT connected - connection successful");
+        log(`Device found: ${device.name}`);
+        bleServer = await device.gatt.connect();
+        log("GATT connected");
+
+        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+        log("Service discovered");
+
+        // Temperature notification characteristic
+        tempChar = await service.getCharacteristic("a3c1e8f2-5b2a-4c8e-9f1d-2e3b4c5d6e7f");
+        await tempChar.startNotifications();
+        tempChar.addEventListener('characteristicvaluechanged', (event) => {
+            const value = new TextDecoder().decode(event.target.value);
+            currentTemp = parseFloat(value);
+            document.getElementById('current-temp').textContent = currentTemp.toFixed(1);
+            log(`🌡️ Temperature updated: ${currentTemp}°C`);
+        });
+        log("Temperature notifications started");
 
         isConnected = true;
-        statusEl.textContent = `Connected to ${bleDevice.name}`;
+        statusEl.textContent = `Connected to ${device.name}`;
         statusEl.classList.add('connected');
         startSimulation();
-        log("✅ Connected (ready to send commands)");
+        log("✅ Fully connected - receiving live updates");
 
     } catch (error) {
         console.error(error);
@@ -61,7 +70,6 @@ async function sendCommand(cmdObj) {
         log("❌ Not connected");
         return;
     }
-
     try {
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const cmdChar = await service.getCharacteristic("c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f");
