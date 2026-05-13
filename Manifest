@@ -1,0 +1,16 @@
+{
+  "name": "PET-CF Annealing Oven Controller",
+  "short_name": "PET-CF Oven",
+  "description": "Bluetooth controller for PET-CF annealing oven",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e2937",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/1e2937/60a5fa?text=Oven",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
