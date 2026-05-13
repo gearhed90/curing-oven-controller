@@ -23,37 +23,36 @@ function startSimulation() {
     }, 1100);
 }
 
-// ==================== REAL BLE CONNECT ====================
+// ==================== REAL BLE CONNECT (Improved for Bluefy) ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
-    statusEl.textContent = "Scanning for PET-CF-Oven...";
+    statusEl.textContent = "Opening device picker...";
     statusEl.classList.remove('connected');
-    log("🔍 Requesting Bluetooth device...", "info");
+    log("🔍 Opening Bluefy device picker...", "info");
 
     try {
         const device = await navigator.bluetooth.requestDevice({
+            // acceptAllDevices: true,           // Uncomment this line if the filtered version still fails
             filters: [{ namePrefix: "PET-CF" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
 
-        log(`✅ Device selected: ${device.name}`, "success");
-        statusEl.textContent = `Connected to ${device.name}`;
+        log(`✅ Device selected: ${device.name || 'Unknown'}`, "success");
+        statusEl.textContent = `Connected to ${device.name || 'Device'}`;
         statusEl.classList.add('connected');
 
         isConnected = true;
         startSimulation();
 
-        // TODO: Later we will add gatt.connect() and characteristic handling here
-
     } catch (error) {
         console.error("BLE Error:", error);
         log(`❌ Connection failed: ${error.message}`, "danger");
-        statusEl.textContent = "Connection Failed";
+        statusEl.textContent = "Failed — Check Bluefy logs";
         
-        if (error.message.includes("NotFound") || error.message.includes("No device")) {
-            log("   Make sure the ESP32 is powered on and advertising.", "warning");
-        } else if (error.message.includes("User cancelled")) {
-            log("   Scan was cancelled.", "info");
+        if (error.name === "NotFoundError") {
+            log("   No matching device found. Try power-cycling ESP32.", "warning");
+        } else if (error.name === "NotAllowedError") {
+            log("   Permission denied or picker cancelled.", "info");
         }
     }
 });
