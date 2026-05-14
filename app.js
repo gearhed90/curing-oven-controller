@@ -37,12 +37,6 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
             const value = new TextDecoder().decode(event.target.value);
             const temp = parseFloat(value);
             document.getElementById('current-temp').textContent = temp.toFixed(1);
-
-            // Update graph if running
-            if (chart && currentCycleData.length > 0) {
-                currentCycleData.push({ time: Date.now(), actual: temp });
-                updateGraph();
-            }
         });
 
         isConnected = true;
@@ -50,8 +44,9 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         statusEl.classList.add('connected');
         log("✅ Connected");
 
+        // Start temperature + graph loop
+        startTemperatureLoop();
         setTimeout(readStatus, 800);
-        initGraph();
 
     } catch (error) {
         statusEl.textContent = "Connection failed";
@@ -116,6 +111,7 @@ function initGraph() {
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
+                    tension: 0.1,
                     data: []
                 },
                 {
@@ -124,15 +120,26 @@ function initGraph() {
                     borderDash: [5, 5],
                     borderWidth: 2,
                     fill: false,
+                    tension: 0.1,
                     data: []
                 }
             ]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
-                x: { type: 'linear', title: { display: true, text: 'Time (seconds)' } },
-                y: { title: { display: true, text: 'Temperature (°C)' } }
+                x: {
+                    type: 'linear',
+                    title: { display: true, text: 'Time (seconds)' }
+                },
+                y: {
+                    title: { display: true, text: 'Temperature (°C)' },
+                    min: 0
+                }
+            },
+            animation: {
+                duration: 0
             }
         }
     });
@@ -141,13 +148,32 @@ function initGraph() {
 function updateGraph() {
     if (!chart || currentCycleData.length === 0) return;
 
-    const actualData = currentCycleData.map((point, index) => ({
-        x: (point.time - currentCycleData[0].time) / 1000,
+    const startTime = currentCycleData[0].time;
+
+    const actualData = currentCycleData.map(point => ({
+        x: (point.time - startTime) / 1000,
         y: point.actual
     }));
 
     chart.data.datasets[0].data = actualData;
-    chart.update();
+    chart.update('none');
+}
+
+// ==================== TEMPERATURE LOOP ====================
+function startTemperatureLoop() {
+    setInterval(() => {
+        if (!isConnected) return;
+
+        currentTemp = thermocouple.readCelsius();
+        if (currentTemp < 0 || currentTemp > 1000) currentTemp = 28.0;
+
+        document.getElementById('current-temp').textContent = currentTemp.toFixed(1);
+
+        if (currentCycleData.length > 0) {
+            currentCycleData.push({ time: Date.now(), actual: currentTemp });
+            updateGraph();
+        }
+    }, 1000);
 }
 
 // ==================== BUTTONS ====================
@@ -180,7 +206,6 @@ document.getElementById('start-program').addEventListener('click', () => {
     log(`▶ Starting annealing: Target ${target}°C, Ramp ${ramp}°C/min, Hold ${hold} min, Cool ${cool}°C/min`);
     sendCommand(cmd);
     
-    // Start new cycle recording
     currentCycleData = [];
     if (chart) chart.data.datasets[0].data = [];
 });
