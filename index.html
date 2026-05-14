@@ -7,6 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
     <meta name="theme-color" content="#1e2937">
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -53,14 +54,14 @@
             <button id="start-program" class="btn success">▶ Start Annealing Cycle</button>
         </section>
 
-        <!-- Live Graph -->
+        <!-- Graph -->
         <section class="graph-section">
             <h3>Annealing Progress</h3>
             <canvas id="temp-graph" width="600" height="300"></canvas>
             <button id="view-history" class="btn secondary" style="margin-top: 10px;">View Past Cycles</button>
         </section>
 
-        <!-- Activity Log -->
+        <!-- Log -->
         <section class="log-section">
             <h3>Activity Log</h3>
             <div id="log" class="log"></div>
