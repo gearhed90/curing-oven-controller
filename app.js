@@ -44,7 +44,8 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         statusEl.classList.add('connected');
         log("✅ Connected");
 
-        // Start temperature + graph loop
+        // Initialize graph and start temperature loop
+        initGraph();
         startTemperatureLoop();
         setTimeout(readStatus, 800);
 
