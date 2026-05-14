@@ -1,4 +1,4 @@
-// ==================== PET-CF Annealing Oven Controller - Debug Version ====================
+// ==================== PET-CF Annealing Oven Controller - Complete ====================
 let isConnected = false;
 let bleServer = null;
 const logEl = document.getElementById('log');
@@ -42,7 +42,6 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         statusEl.classList.add('connected');
         log("✅ Connected");
 
-        // Read initial status after connecting
         setTimeout(readStatus, 800);
 
     } catch (error) {
@@ -51,32 +50,24 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     }
 });
 
-// ==================== READ STATUS (with better error logging) ====================
+// ==================== READ STATUS ====================
 async function readStatus() {
-    if (!bleServer) {
-        log("readStatus: Not connected");
-        return;
-    }
+    if (!bleServer) return;
     try {
-        log("Reading status characteristic...");
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const statusChar = await service.getCharacteristic("d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90");
         const value = await statusChar.readValue();
         const status = new TextDecoder().decode(value);
-
-        log(`Raw status received: ${status}`);
-
         const parts = status.split("|");
+
         if (parts.length >= 3) {
             document.getElementById('current-mode').textContent = parts[0];
             document.getElementById('heater-status').textContent = `Heater: ${parts[1]}`;
             document.getElementById('fan-status').textContent = `Fan: ${parts[2]}`;
-            log(`✅ Status updated → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
-        } else {
-            log(`Status format unexpected: ${status}`);
+            log(`✅ Status → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
         }
     } catch (error) {
-        log(`❌ Status read FAILED: ${error.message || error}`);
+        log(`Status read error: ${error.message || error}`);
     }
 }
 
@@ -95,20 +86,39 @@ async function sendCommand(cmdObj) {
         await cmdChar.writeValue(encoder.encode(jsonString));
         log(`📤 Sent: ${jsonString}`);
 
-        // Read updated status
         setTimeout(readStatus, 500);
-
     } catch (error) {
         log(`❌ Command failed: ${error.message || error}`);
     }
 }
 
+// ==================== BUTTONS ====================
 document.getElementById('full-power-btn').addEventListener('click', () => {
+    log("🔥 Full Power Test pressed");
     sendCommand({ cmd: "fullpower" });
 });
 
 document.getElementById('emergency-stop').addEventListener('click', () => {
+    log("⛔ Emergency Stop pressed");
     sendCommand({ cmd: "emergency" });
+});
+
+document.getElementById('start-program').addEventListener('click', () => {
+    const target = parseFloat(document.getElementById('target-temp').value);
+    const ramp   = parseFloat(document.getElementById('ramp-rate').value);
+    const hold   = parseFloat(document.getElementById('hold-time').value);
+    const cool   = parseFloat(document.getElementById('cool-rate').value);
+
+    const cmd = {
+        cmd: "start",
+        target: target,
+        ramp: ramp,
+        hold: hold,
+        cool: cool
+    };
+
+    log(`▶ Starting annealing: Target ${target}°C, Ramp ${ramp}°C/min, Hold ${hold} min, Cool ${cool}°C/min`);
+    sendCommand(cmd);
 });
 
 log("🚀 PET-CF Oven Controller ready.");
