@@ -44,7 +44,6 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         statusEl.classList.add('connected');
         log("✅ Connected");
 
-        // Initialize graph and start temperature loop
         initGraph();
         startTemperatureLoop();
         setTimeout(readStatus, 800);
@@ -135,8 +134,8 @@ function initGraph() {
                     title: { display: true, text: 'Time (seconds)' }
                 },
                 y: {
-                    title: { display: true, text: 'Temperature (°C)' },
-                    min: 0
+                    min: 90,
+                    title: { display: true, text: 'Temperature (°C)' }
                 }
             },
             animation: {
