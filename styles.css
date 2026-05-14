@@ -80,3 +80,11 @@ input {
     color: white;
     margin: 6px 0 16px 0;
 }
+.graph-section {
+    margin-top: 20px;
+}
+
+#temp-graph {
+    max-height: 320px;
+    width: 100% !important;
+}
