@@ -1,4 +1,4 @@
-// ==================== PET-CF Annealing Oven Controller - Complete ====================
+// ==================== Curing Annealing Oven Controller - Complete ====================
 let isConnected = false;
 let bleServer = null;
 const logEl = document.getElementById('log');
@@ -14,11 +14,11 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
     statusEl.classList.remove('connected');
-    log("🔍 Scanning for PET-CF-Oven...");
+    log("🔍 Scanning for Curing-Oven...");
 
     try {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "PET-CF" }],
+            filters: [{ namePrefix: "Curing" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
         log(`Device found: ${device.name}`);
@@ -121,4 +121,4 @@ document.getElementById('start-program').addEventListener('click', () => {
     sendCommand(cmd);
 });
 
-log("🚀 PET-CF Oven Controller ready.");
+log("🚀 Curing Oven Controller ready.");
