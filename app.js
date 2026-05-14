@@ -1,6 +1,8 @@
-// ==================== Curing Oven Controller - Debug Version ====================
+// ==================== Curing Oven Controller - Complete ====================
 let isConnected = false;
 let bleServer = null;
+let chart = null;
+let currentCycleData = [];
 const logEl = document.getElementById('log');
 
 function log(msg) {
@@ -29,12 +31,18 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         log("Service discovered");
 
-        // Temperature notifications
         const tempChar = await service.getCharacteristic("a3c1e8f2-5b2a-4c8e-9f1d-2e3b4c5d6e7f");
         await tempChar.startNotifications();
         tempChar.addEventListener('characteristicvaluechanged', (event) => {
             const value = new TextDecoder().decode(event.target.value);
-            document.getElementById('current-temp').textContent = parseFloat(value).toFixed(1);
+            const temp = parseFloat(value);
+            document.getElementById('current-temp').textContent = temp.toFixed(1);
+
+            // Update graph if running
+            if (chart && currentCycleData.length > 0) {
+                currentCycleData.push({ time: Date.now(), actual: temp });
+                updateGraph();
+            }
         });
 
         isConnected = true;
@@ -43,6 +51,7 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         log("✅ Connected");
 
         setTimeout(readStatus, 800);
+        initGraph();
 
     } catch (error) {
         statusEl.textContent = "Connection failed";
@@ -50,31 +59,23 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     }
 });
 
-// ==================== READ STATUS (with better error logging) ====================
+// ==================== READ STATUS ====================
 async function readStatus() {
-    if (!bleServer) {
-        log("readStatus: Not connected");
-        return;
-    }
+    if (!bleServer) return;
     try {
-        log("Reading status characteristic...");
         const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
         const statusChar = await service.getCharacteristic("d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90");
         const value = await statusChar.readValue();
         const status = new TextDecoder().decode(value);
-        log(`Raw status received: ${status}`);
-
         const parts = status.split("|");
+
         if (parts.length >= 3) {
             document.getElementById('current-mode').textContent = parts[0];
             document.getElementById('heater-status').textContent = `Heater: ${parts[1]}`;
             document.getElementById('fan-status').textContent = `Fan: ${parts[2]}`;
-            log(`✅ Status updated → Mode: ${parts[0]} | Heater: ${parts[1]} | Fan: ${parts[2]}`);
-        } else {
-            log(`Status format unexpected: ${status}`);
         }
     } catch (error) {
-        log(`❌ Status read FAILED: ${error.message || error}`);
+        log(`Status read error: ${error.message || error}`);
     }
 }
 
@@ -99,13 +100,67 @@ async function sendCommand(cmdObj) {
     }
 }
 
+// ==================== GRAPH FUNCTIONS ====================
+function initGraph() {
+    const ctx = document.getElementById('temp-graph').getContext('2d');
+    
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Actual Temperature',
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    data: []
+                },
+                {
+                    label: 'Target Temperature',
+                    borderColor: '#ef4444',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    fill: false,
+                    data: []
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: 'linear', title: { display: true, text: 'Time (seconds)' } },
+                y: { title: { display: true, text: 'Temperature (°C)' } }
+            }
+        }
+    });
+}
+
+function updateGraph() {
+    if (!chart || currentCycleData.length === 0) return;
+
+    const actualData = currentCycleData.map((point, index) => ({
+        x: (point.time - currentCycleData[0].time) / 1000,
+        y: point.actual
+    }));
+
+    chart.data.datasets[0].data = actualData;
+    chart.update();
+}
+
 // ==================== BUTTONS ====================
 document.getElementById('full-power-btn').addEventListener('click', () => {
+    log("🔥 Full Power Test pressed");
     sendCommand({ cmd: "fullpower" });
 });
 
 document.getElementById('emergency-stop').addEventListener('click', () => {
+    log("⛔ Emergency Stop pressed");
     sendCommand({ cmd: "emergency" });
+    currentCycleData = [];
+    if (chart) chart.data.datasets[0].data = [];
 });
 
 document.getElementById('start-program').addEventListener('click', () => {
@@ -124,6 +179,24 @@ document.getElementById('start-program').addEventListener('click', () => {
 
     log(`▶ Starting annealing: Target ${target}°C, Ramp ${ramp}°C/min, Hold ${hold} min, Cool ${cool}°C/min`);
     sendCommand(cmd);
+    
+    // Start new cycle recording
+    currentCycleData = [];
+    if (chart) chart.data.datasets[0].data = [];
+});
+
+document.getElementById('view-history').addEventListener('click', () => {
+    const history = JSON.parse(localStorage.getItem('curingCycles') || '[]');
+    if (history.length === 0) {
+        alert("No past cycles saved yet.");
+        return;
+    }
+    
+    let message = "Past Cycles:\n\n";
+    history.forEach((cycle, index) => {
+        message += `${index + 1}. ${new Date(cycle.date).toLocaleString()} - Target: ${cycle.target}°C\n`;
+    });
+    alert(message);
 });
 
 log("🚀 Curing Oven Controller ready.");
