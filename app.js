@@ -1,4 +1,4 @@
-// ==================== PET-CF Annealing Oven Controller - Debug Version ====================
+// ==================== Curing Oven Controller - Debug Version ====================
 let isConnected = false;
 let bleServer = null;
 const logEl = document.getElementById('log');
@@ -14,15 +14,15 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
     statusEl.classList.remove('connected');
-    log("🔍 Scanning for PET-CF-Oven...");
+    log("🔍 Scanning for Curing-Oven...");
 
     try {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "PET-CF" }],
+            filters: [{ namePrefix: "Curing" }],
             optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
         });
-        log(`Device found: ${device.name}`);
 
+        log(`Device found: ${device.name}`);
         bleServer = await device.gatt.connect();
         log("GATT connected");
 
@@ -42,7 +42,6 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
         statusEl.classList.add('connected');
         log("✅ Connected");
 
-        // Read initial status after connecting
         setTimeout(readStatus, 800);
 
     } catch (error) {
@@ -63,7 +62,6 @@ async function readStatus() {
         const statusChar = await service.getCharacteristic("d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90");
         const value = await statusChar.readValue();
         const status = new TextDecoder().decode(value);
-
         log(`Raw status received: ${status}`);
 
         const parts = status.split("|");
@@ -95,14 +93,13 @@ async function sendCommand(cmdObj) {
         await cmdChar.writeValue(encoder.encode(jsonString));
         log(`📤 Sent: ${jsonString}`);
 
-        // Read updated status
         setTimeout(readStatus, 500);
-
     } catch (error) {
         log(`❌ Command failed: ${error.message || error}`);
     }
 }
 
+// ==================== BUTTONS ====================
 document.getElementById('full-power-btn').addEventListener('click', () => {
     sendCommand({ cmd: "fullpower" });
 });
@@ -111,4 +108,22 @@ document.getElementById('emergency-stop').addEventListener('click', () => {
     sendCommand({ cmd: "emergency" });
 });
 
-log("🚀 PET-CF Oven Controller ready.");
+document.getElementById('start-program').addEventListener('click', () => {
+    const target = parseFloat(document.getElementById('target-temp').value);
+    const ramp   = parseFloat(document.getElementById('ramp-rate').value);
+    const hold   = parseFloat(document.getElementById('hold-time').value);
+    const cool   = parseFloat(document.getElementById('cool-rate').value);
+
+    const cmd = {
+        cmd: "start",
+        target: target,
+        ramp: ramp,
+        hold: hold,
+        cool: cool
+    };
+
+    log(`▶ Starting annealing: Target ${target}°C, Ramp ${ramp}°C/min, Hold ${hold} min, Cool ${cool}°C/min`);
+    sendCommand(cmd);
+});
+
+log("🚀 Curing Oven Controller ready.");
