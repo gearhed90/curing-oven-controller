@@ -1,4 +1,4 @@
-// ==================== Curing Annealing Oven Controller - Complete ====================
+// ==================== PET-CF / Curing Oven Controller - Complete ====================
 let isConnected = false;
 let bleServer = null;
 const logEl = document.getElementById('log');
@@ -9,7 +9,7 @@ function log(msg) {
     logEl.scrollTop = logEl.scrollHeight;
 }
 
-// ==================== CONNECT ====================
+// ==================== CONNECT (Simplified for Bluefy) ====================
 document.getElementById('connect-btn').addEventListener('click', async () => {
     const statusEl = document.getElementById('connection-status');
     statusEl.textContent = "Connecting...";
@@ -18,31 +18,16 @@ document.getElementById('connect-btn').addEventListener('click', async () => {
 
     try {
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "Curing" }],
-            optionalServices: ["4fafc201-1fb5-459e-8fcc-c5c9c331914b"]
+            filters: [{ name: "Curing-Oven" }]
         });
+
         log(`Device found: ${device.name}`);
-
         bleServer = await device.gatt.connect();
-        log("GATT connected");
-
-        const service = await bleServer.getPrimaryService("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
-        log("Service discovered");
-
-        // Temperature notifications
-        const tempChar = await service.getCharacteristic("a3c1e8f2-5b2a-4c8e-9f1d-2e3b4c5d6e7f");
-        await tempChar.startNotifications();
-        tempChar.addEventListener('characteristicvaluechanged', (event) => {
-            const value = new TextDecoder().decode(event.target.value);
-            document.getElementById('current-temp').textContent = parseFloat(value).toFixed(1);
-        });
+        log("✅ Connected via Bluefy");
 
         isConnected = true;
         statusEl.textContent = `Connected to ${device.name}`;
         statusEl.classList.add('connected');
-        log("✅ Connected");
-
-        setTimeout(readStatus, 800);
 
     } catch (error) {
         statusEl.textContent = "Connection failed";
