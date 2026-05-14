@@ -1,8 +1,8 @@
 {
-  "name": "PET-CF Annealing Oven Controller",
-  "short_name": "PET-CF Oven",
-  "description": "Bluetooth controller for PET-CF annealing oven",
-  "start_url": "/pet-cf-oven-controller/",
+  "name": "Curing Oven Controller",
+  "short_name": "Curing Oven",
+  "description": "Bluetooth controller for Curing oven",
+  "start_url": "/curing-oven-controller/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1e2937",
