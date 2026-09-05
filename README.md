@@ -11,7 +11,8 @@ This repository is the **PWA frontend**. ESP32 firmware lives on the board (Ardu
 - Cabinet: 30-inch Masterbuilt digital electric smoker (legs installed)
 - Cabinet size without legs: ~20.5 in W × 19.9 in D × 33.3 in H
 - Control electronics: classic **ESP32 DevKit (WROOM-32, 30-pin)** in a repurposed PC case under the smoker
-- Heat: stock element replaced with stronger coils (TonGass 1440 W dual-element plan / installed coils)
+- Power: Dell **AC260EBM-00** 12 V PSU in that case; XL4015-style buck converter steps 12 V → 5 V for logic
+- Heat: stock element replaced with stronger coils (two TonGass 1440 W / 120 V RV elements)
 - Sensors: three **MAX6675 + K-type** thermocouples (low / mid / high)
 - Recirculation fan installed; duct still pending
 - Insulation present on sides / top / door; **back panel insulation discarded** and needs replacement (~20.5 in × 33.3 in, buy oversized and trim)
@@ -34,7 +35,7 @@ Mid and high probe **CS pins are not locked yet**. Extra modules share SCK 18 an
 
 MAX6675 VCC → 3.3 V or 5 V (module dependent). Common GND with the ESP32.
 
-See [docs/HARDWARE.md](docs/HARDWARE.md) for mounting, power, and element notes.
+See [docs/HARDWARE.md](docs/HARDWARE.md) for mounting, power, PSU enable pins, and element notes.
 
 ## BLE interface
 
@@ -55,6 +56,8 @@ Commands sent as UTF-8 JSON:
 { "cmd": "start", "target": 95, "ramp": 5, "hold": 30, "cool": 3 }
 ```
 
+`fullpower` and `start` currently drive the SSRs **fully on** (digital HIGH). There is **no PID and no automatic shutoff at a target temperature**. Emergency stop is the only software off path until closed-loop control is added.
+
 Default UI cycle: **95 °C** target, **5 °C/min** ramp, **30 min** hold, **3 °C/min** cool.
 
 Status characteristic format: `MODE|HEATER|FAN` (pipe-separated).
@@ -69,11 +72,14 @@ Status characteristic format: `MODE|HEATER|FAN` (pipe-separated).
 | `manifest.json` | Installable PWA |
 | `sw.js` | Service worker |
 
-Open the Pages URL on a phone or laptop that supports Web Bluetooth (Chrome / Edge). Connect to a device whose advertised name starts with `Curing`.
+Open the Pages URL on a phone or laptop that supports Web Bluetooth (Chrome / Edge). Connect to a device whose advertised name starts with `Curing`. On iOS, Safari does not implement Web Bluetooth; Bluefy is the usual workaround and can be flaky.
 
 ## Open items
 
 - Confirm CS GPIOs for the second and third MAX6675 modules and update this README
 - Install recirculation duct
 - Replace discarded back-panel ceramic insulation
+- Add closed-loop heat control (heater currently stays 100% on until emergency/stop)
+- Investigate ~60 °C stall during full-power tests (hardware: SSR conduction, PSU sag, or element)
+- Finish mounting ESP32, MAX6675 boards, and fan SSR in the PC case
 - Publish ESP32 firmware into this repo (or a sibling repo) so pin `#define`s stay in sync with the docs
