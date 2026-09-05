@@ -2,6 +2,8 @@
 
 Converted 30-inch Masterbuilt digital electric smoker → Cerakote / PET-CF annealing oven.
 
+Firmware that matches this pinout: [`firmware/Curing_Oven_BLE/Curing_Oven_BLE.ino`](../firmware/Curing_Oven_BLE/Curing_Oven_BLE.ino).
+
 ## Controller
 
 - MCU: **ESP32-WROOM-32** on a 30-pin DevKit (DOIT / DevKit V1 style)
@@ -11,17 +13,15 @@ Converted 30-inch Masterbuilt digital electric smoker → Cerakote / PET-CF anne
 
 ## Confirmed GPIO map
 
-From the working firmware used on this build (original toaster-oven sketch carried forward):
-
 ```
 THERMO_CLK      GPIO 18     MAX6675 SCK (shared)
 THERMO_DO       GPIO 19     MAX6675 SO  (shared)
 THERMO_CS       GPIO 17     MAX6675 CS  (probe 1)
-SSR_ELEMENTS    GPIO 5      Heater SSR control
+SSR_ELEMENTS    GPIO 5      Heater SSR control (both elements may share this DC input)
 SSR_FAN         GPIO 33     Fan SSR / relay
 ```
 
-Three MAX6675 + K-type probes are planned/installed at low, mid, and high rack heights. Probe 1 CS is GPIO 17. CS for probes 2 and 3 is **not assigned in firmware docs yet** — share CLK/SO, give each module its own CS.
+Three MAX6675 + K-type probes are planned/installed at low, mid, and high rack heights. Probe 1 CS is GPIO 17. CS for probes 2 and 3 is **not assigned yet** — share CLK/SO, give each module its own CS.
 
 Suggested unused CS candidates: GPIO 16, 21, 22, 23, 25, 26, 27, 32.
 Avoid strapping pins GPIO 0, 2, 12, 15 if you can.
@@ -82,4 +82,4 @@ Recommended element height when drilling: **1.75–2 in (44–50 mm)** above the
 
 ## BLE name and service
 
-Firmware should advertise a name starting with `Curing` and expose service `4fafc201-1fb5-459e-8fcc-c5c9c331914b` so the PWA can connect.
+Firmware advertises `Curing-Oven` and service `4fafc201-1fb5-459e-8fcc-c5c9c331914b` so the PWA can connect.
